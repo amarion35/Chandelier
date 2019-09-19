@@ -1,6 +1,13 @@
 # chandelier
 
-In a nutshell:
+Framework made to match the ease of use of Keras with PyTorch models. Implement the Model class with a behaviour similar to the Model class of Keras. Also implement a GAN class.
+
+## Requirements
+
+* numpy
+* torch
+
+## Model class usage
 ```
 # Define your PyTorch model
 class Classifier(nn.Module):
@@ -21,7 +28,7 @@ class Classifier(nn.Module):
 
 classifier = Classifier(input_shape=64)
 
-classif_model = chandelier.Model(classifier, device='cuda:2') # <-- Model will manage training
+classif_model = chandelier.Model(classifier, device='cuda:0') # <-- Model will manage training
 
 optimizer = optim.Adam(classifier.parameters(), lr=0.005, betas=(0.9, 0.999), eps=1e-8)
 loss = nn.CrossEntropyLoss(reduction='mean')
@@ -46,7 +53,7 @@ for metric in metrics:
     plt.savefig(metric.__name__)
 ```
 
-The framework also supports GAN training:
+## GAN class usage
 ```
 class Discriminator(nn.Module):
     def __init__(self, input_shape):
@@ -92,19 +99,19 @@ class Classifier(nn.Module):
 generator = Generator(input_shape=10)
 generator_optimizer = optim.Adam(generator.parameters(), lr=0.0005, betas=(0.5, 0.999), eps=1e-8)
 generator_loss = nn.BCELoss(reduction='mean')
-generator_model = Model(generator, device='cuda:2')
+generator_model = chandelier.Model(generator, device='cuda:0')
 generator_model.compile(optimizer=generator_optimizer, loss=generator_loss)
 
 discriminator = Discriminator(input_shape=64)
 discriminator_optimizer = optim.Adam(discriminator.parameters(), lr=0.0005, betas=(0.5, 0.999), eps=1e-8)
 discriminator_loss = nn.BCELoss(reduction='mean')
 discriminator_metrics = [binary_accuracy]
-discriminator_model = Model(discriminator, device='cuda:2')
+discriminator_model = chandelier.Model(discriminator, device='cuda:0')
 discriminator_model.compile(optimizer=discriminator_optimizer, loss=discriminator_loss, metrics=discriminator_metrics)
 
 gan_loss = nn.BCELoss(reduction='mean')
 gan_metrics = [binary_accuracy]
-gan = GAN(discriminator_model, generator_model, loss=gan_loss, metrics=gan_metrics, device='cuda:2')
+gan = chandelier.GAN(discriminator_model, generator_model, loss=gan_loss, metrics=gan_metrics, device='cuda:0')
 gan.fit(X_train, batch_size=64, epochs=200)
 
 plt.figure()
