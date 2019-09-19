@@ -6,7 +6,7 @@ In a nutshell:
 class Classifier(nn.Module):
     def __init__(self, input_shape):
         super(Classifier, self).__init__()
-        self.input_shape = input_shape # <-- must contain an input_shape argument
+        self.input_shape = input_shape # <-- must contain the input_shape attribute
         self.fc1 = nn.Linear(input_shape,64)
         self.fc2 = nn.Linear(64,32)
         self.fc3 = nn.Linear(32,10)
