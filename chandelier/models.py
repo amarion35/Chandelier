@@ -81,7 +81,7 @@ class Model:
             self.hist[k].append(v)
 
     def predict(self, x, training=False):
-        return self.model(x, training=False)
+        return self.model(x.to(self.device), training=False)
 
 
 class GAN:
