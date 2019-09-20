@@ -121,8 +121,8 @@ def test_gan():
     Y_train = torch.LongTensor(Y_train)
     Y_test = torch.LongTensor(Y_test)
 
-    generator = Generator(input_shape=10)
-    generator_optimizer = optim.Adam(generator.parameters(), lr=0.0005, betas=(0.5, 0.999), eps=1e-8)
+    generator = Generator(input_shape=256)
+    generator_optimizer = optim.Adam(generator.parameters(), lr=0.0002, betas=(0.7, 0.999), eps=1e-8)
     generator_loss = nn.BCELoss(reduction='mean')
     generator_model = Model(generator, device='cuda:2')
     generator_model.compile(optimizer=generator_optimizer, loss=generator_loss)
@@ -137,7 +137,7 @@ def test_gan():
     gan_loss = nn.BCELoss(reduction='mean')
     gan_metrics = [binary_accuracy]
     gan = GAN(discriminator_model, generator_model, loss=gan_loss, metrics=gan_metrics, device='cuda:2')
-    gan.fit(X_train, batch_size=64, epochs=200)
+    gan.fit(X_train, batch_size=128, epochs=200)
 
     plt.figure()
     plt.plot(gan.hist['d_loss'], label='d_loss')

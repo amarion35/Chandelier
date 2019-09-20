@@ -48,7 +48,8 @@ class Model:
                 loss = self.loss_function(out, y_batch)
                 loss.backward(retain_graph=True)
                 self.optimizer.step()
-            self.eval(x, y, None)
+            metrics = self.eval(x, y, None)
+            self._record(metrics)
             vprint(' - loss: {:.4f}'.format(self.hist['loss'][-1]), end='')
             if False:
                 vprint(' - val_loss: {:.4f}'.format(self.hist['val_loss'][-1]), end='')
@@ -57,18 +58,27 @@ class Model:
     def eval(self, x, y, validation_data):
         out = self.model(x, training=False)
         loss = self.loss_function(out, y)
-        self.hist['loss'].append(loss.cpu().data.numpy())
+        
+        results = {}
+
+        results['loss'] = loss.cpu().data.numpy()
         for metric in self.metrics:
-            self.hist[metric.__name__].append(metric(y, out))
+            results[metric.__name__] = metric(y, out)
 
         if not validation_data is None:
             val_x = validation_data[0]
             val_y = validation_data[1]
             out = self.model(val_x, training=False)
             loss = self.loss_function(out, val_y)
-            self.hist['val_loss'].append(loss.cpu().data.numpy())
+            results['val_loss'] = loss.cpu().data.numpy()
             for metric in self.metrics:
-                self.hist['val_'+metric.__name__].append(metric(val_y, out))
+                results['val_'+metric.__name__] = metric(val_y, out)
+
+        return results
+
+    def _record(self, metrics):
+        for k, v in metrics.items():
+            self.hist[k].append(v)
 
     def predict(self, x, training=False):
         return self.model(x, training=False)
@@ -121,16 +131,16 @@ class GAN:
             for b in range(n_batches):
                 batch = idx[batch_size*b:batch_size*(b+1)]
                 real_x_batch = x[batch]
-                real_y_batch = torch.empty(real_x_batch.size(0), dtype=torch.float, device=self.device).fill_(1)
-                noise = torch.empty(real_x_batch.size(0), self.generator.model.input_shape, dtype=torch.float, device=self.device).normal_(0,1)
+                real_y_batch = torch.empty(real_x_batch.size(0)*2, dtype=torch.float, device=self.device).fill_(1)
+                noise = torch.empty(real_x_batch.size(0)*2, self.generator.model.input_shape, dtype=torch.float, device=self.device).normal_(0,1)
                 fake_x_batch = self.generator.predict(noise, training=True)
-                fake_y_batch = torch.empty(real_x_batch.size(0), dtype=torch.float, device=self.device).fill_(0)
+                fake_y_batch = torch.empty(noise.size(0), dtype=torch.float, device=self.device).fill_(0)
 
-                # Real data
-                self.discriminator.fit(real_x_batch, real_y_batch, batch_size=batch_size, epochs=1, verbose=0, initial_epoch=i)
+                x_batch = torch.cat((real_x_batch, fake_x_batch[::2]))
+                y_batch = torch.cat((real_y_batch[::2], fake_y_batch[::2]))
 
-                # Fake data
-                self.discriminator.fit(fake_x_batch, fake_y_batch, batch_size=batch_size, epochs=1, verbose=0, initial_epoch=i)
+                # Discriminator
+                self.discriminator.fit(x_batch, y_batch, batch_size=batch_size, epochs=1, verbose=0, initial_epoch=i)
 
                 # Generator
                 self.generator.optimizer.zero_grad()
@@ -138,7 +148,8 @@ class GAN:
                 loss = self.loss_function(out, real_y_batch)
                 loss.backward(retain_graph=True)
                 self.generator.optimizer.step()
-            self.eval(x, None)
+            metrics = self.eval(x, None)
+            self._record(metrics)
             vprint(' - d_loss: {:.4f}'.format(self.hist['d_loss'][-1]), end='')
             vprint(' - g_loss: {:.4f}'.format(self.hist['g_loss'][-1]), end='')
             if False:
@@ -152,31 +163,41 @@ class GAN:
         fake_x = self.generator.predict(noise, training=True)
         fake_y = torch.empty(real_x.size(0), dtype=torch.float, device=self.device).fill_(0)
 
+        results = {}
+
         # Real data
         out = self.discriminator.predict(real_x)
         loss = self.loss_function(out, real_y)
-        self.hist['real_d_loss'].append(loss.cpu().data.numpy())
+        results['real_d_loss'] = loss.cpu().data.numpy()
         for metric in self.metrics:
-            self.hist['real_d_'+metric.__name__].append(metric(real_y, out))
+            results['real_d_'+metric.__name__] = metric(real_y, out)
 
         # Fake data
         out = self.discriminator.predict(fake_x)
         loss = self.loss_function(out, fake_y)
-        self.hist['fake_d_loss'].append(loss.cpu().data.numpy())
+        results['fake_d_loss'] = loss.cpu().data.numpy()
         for metric in self.metrics:
-            self.hist['fake_d_'+metric.__name__].append(metric(fake_y, out))
+            results['fake_d_'+metric.__name__] = metric(fake_y, out)
 
         # All data
         out = self.discriminator.predict(torch.cat((real_x, fake_x)))
         loss = self.loss_function(out, torch.cat((real_y, fake_y)))
-        self.hist['d_loss'].append(loss.cpu().data.numpy())
+        results['d_loss'] = loss.cpu().data.numpy()
         for metric in self.metrics:
-            self.hist['d_'+metric.__name__].append(metric(torch.cat((real_y, fake_y)), out))
+            results['d_'+metric.__name__] = metric(torch.cat((real_y, fake_y)), out)
 
         # Generator
         out = self.discriminator.predict(fake_x)
         loss = self.loss_function(out, real_y)
-        self.hist['g_loss'].append(loss.cpu().data.numpy())
+        results['g_loss'] = loss.cpu().data.numpy()
         for metric in self.metrics:
-            self.hist['g_'+metric.__name__].append(metric(real_y, out))
+            results['g_'+metric.__name__] = metric(real_y, out)
 
+        return results
+
+    def _record(self, metrics):
+        for k, v in metrics.items():
+            self.hist[k].append(v)
+
+
+    
