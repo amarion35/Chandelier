@@ -8,7 +8,7 @@ Framework made to match the ease of use of Keras with PyTorch models. Implement 
 * torch
 
 ## Model class usage
-```
+```python
 # Define your PyTorch model
 class Classifier(nn.Module):
     def __init__(self, input_shape):
@@ -54,7 +54,7 @@ for metric in metrics:
 ```
 
 ## GAN class usage
-```
+```python
 class Discriminator(nn.Module):
     def __init__(self, input_shape):
         super(Discriminator, self).__init__()
