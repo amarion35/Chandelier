@@ -1,4 +1,4 @@
-# chandelier
+# Chandelier
 
 Framework made to match the ease of use of Keras with PyTorch models. Implement the Model class with a behaviour similar to the Model class of Keras. Also implement a GAN class.
 
