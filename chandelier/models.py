@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from torch.autograd import Variable
 
 class Model:
     def __init__(self, model, device='cpu'):
@@ -48,17 +49,16 @@ class Model:
                 loss = self.loss_function(out, y_batch)
                 loss.backward(retain_graph=True)
                 self.optimizer.step()
-            metrics = self.eval(x, y, None)
+            metrics = self.eval(x, y, batch_size, None if validation_data is None else (val_x, val_y))
             self._record(metrics)
             vprint(' - loss: {:.4f}'.format(self.hist['loss'][-1]), end='')
-            if False:
+            if not validation_data is None:
                 vprint(' - val_loss: {:.4f}'.format(self.hist['val_loss'][-1]), end='')
             vprint('')
 
-    def eval(self, x, y, validation_data):
-        out = self.model(x, training=False)
+    def eval(self, x, y, batch_size, validation_data):
+        out = self._predict(x, batch_size, training=False)
         loss = self.loss_function(out, y)
-        
         results = {}
 
         results['loss'] = loss.cpu().data.numpy()
@@ -68,7 +68,8 @@ class Model:
         if not validation_data is None:
             val_x = validation_data[0]
             val_y = validation_data[1]
-            out = self.model(val_x, training=False)
+            n_batches = int(np.ceil(len(val_x)/batch_size))
+            out = self._predict(val_x, batch_size, training=False)
             loss = self.loss_function(out, val_y)
             results['val_loss'] = loss.cpu().data.numpy()
             for metric in self.metrics:
@@ -80,8 +81,17 @@ class Model:
         for k, v in metrics.items():
             self.hist[k].append(v)
 
-    def predict(self, x, training=False):
-        return self.model(x.to(self.device), training=False)
+    def _predict(self, x, batch_size, training=False):
+        n_batches = int(np.ceil(len(x)/batch_size))
+        out = []
+        for b in range(n_batches):
+            x_batch = x[batch_size*b:batch_size*(b+1)].detach().to(self.device)
+            out.append(self.model(x_batch, training=False).detach())
+        out = torch.cat(out)
+        return out
+
+    def predict(self, x, batch_size=32, training=False):
+        return self._predict(self, x, batch_size, training=training)
 
 
 class GAN:
